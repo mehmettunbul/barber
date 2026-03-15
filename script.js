@@ -101,22 +101,58 @@
   /* ---------- LAZY-PLAY GALLERY VIDEOS ---------- */
   const galleryVideos = document.querySelectorAll(".gallery__video");
   if (galleryVideos.length) {
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+    // On mobile, only play one video at a time to avoid decoder throttling
+    let currentlyPlaying = null;
+
+    function playVideo(video) {
+      if (isMobile && currentlyPlaying && currentlyPlaying !== video) {
+        currentlyPlaying.pause();
+      }
+      var playPromise = video.play();
+      if (playPromise !== undefined) {
+        playPromise.then(function () {
+          currentlyPlaying = video;
+        }).catch(function () {
+          // Autoplay blocked — add tap-to-play for mobile
+          if (isMobile) {
+            video.closest(".gallery__vframe").addEventListener("click", function handler() {
+              video.play().catch(function () {});
+              video.closest(".gallery__vframe").removeEventListener("click", handler);
+            }, { once: true });
+          }
+        });
+      }
+    }
+
     const vidObserver = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            entry.target.play().catch(() => {});
+            playVideo(entry.target);
           } else {
             entry.target.pause();
+            if (currentlyPlaying === entry.target) currentlyPlaying = null;
           }
         });
       },
-      { threshold: 0.15 }
+      { threshold: 0.25 }
     );
+
     galleryVideos.forEach((v) => {
       v.removeAttribute("autoplay");
       v.pause();
+      // On mobile, don't preload until visible — saves bandwidth
+      if (isMobile) v.setAttribute("preload", "none");
       vidObserver.observe(v);
+    });
+
+    // Handle iOS resume after backgrounding
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "visible" && currentlyPlaying) {
+        currentlyPlaying.play().catch(function () {});
+      }
     });
   }
 
