@@ -5,6 +5,17 @@
 (function () {
   "use strict";
 
+  /* ---------- FORCE HERO VIDEO AUTOPLAY (iOS) ---------- */
+  var heroVid = document.querySelector(".hero__video");
+  if (heroVid) {
+    heroVid.muted = true;
+    heroVid.play().catch(function () {});
+    document.addEventListener("touchstart", function iosUnlock() {
+      heroVid.play().catch(function () {});
+      document.removeEventListener("touchstart", iosUnlock);
+    }, { once: true });
+  }
+
   /* ---------- HEADER SCROLL ---------- */
   const header = document.getElementById("header");
 
